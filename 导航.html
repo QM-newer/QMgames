@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>欢迎来到QMgames</title>
+    <link rel="stylesheet" href="导航.css"> <!-- 引入样式文件 -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron&display=swap" rel="stylesheet"> <!-- 引入炫酷字体 -->
+</head>
+
+<body>
+    <div class="header">
+        <div class="greet-content">
+            <img id="touxiang" src="greet.png" alt="greet">
+            <p id="greet">尊敬的访客，你们好，欢迎来到QMgames，我是网站创始人孤帆_邱某，这里有一些足以让你打发时间用于消遣的小游戏，不定期更新。</p>
+        </div>
+    </div>
+    <h1 class="welcome-message">QMgames</h1>
+    <div class="centered-box">
+        <header>
+
+        </header>
+        <nav>
+            <ul>
+                <li><a href="俄罗斯方块.html">俄罗斯方块</a></li>
+                <li><a href="2048.html">2048</a></li>
+                <li><a href="">更多游戏研发中......</a></li>
+        </nav>
+        <footer>
+            <p>网页设计者&copy; 孤帆_邱某</p>
+        </footer>
+        <div class="digital"></div>
+        <div class="digital"></div>
+        <div class="digital"></div>
+        <div class="digital"></div>
+        <div class="digital"></div>
+        <div class="digital"></div>
+        <div class="digital"></div>
+        <div class="digital"></div>
+        <div class="digital"></div>
+        <div class="digital"></div>
+        <div class="digital"></div>
+        <div class="digital"></div>
+        <div class="digital"></div>
+        <div class="digital"></div>
+        <div class="digital"></div>
+        <div class="digital"></div>
+        <div class="digital"></div>
+        <div class="digital"></div>
+        <div class="digital"></div>
+        <div class="digital"></div>
+    </div>
+    <script>
+        const digitalBlocks = document.querySelectorAll('.digital');
+
+        digitalBlocks.forEach(block => {
+            // 鼠标按下事件
+            block.addEventListener('mousedown', (e) => {
+                startDrag(e, block);
+            });
+
+            // 触摸开始事件
+            block.addEventListener('touchstart', (e) => {
+                startDrag(e.touches[0], block); // 使用触摸点
+            });
+        });
+
+        function startDrag(e, block) {
+            const offsetX = e.clientX - block.getBoundingClientRect().left;
+            const offsetY = e.clientY - block.getBoundingClientRect().top;
+
+            const onMouseMove = (e) => {
+                block.style.position = 'absolute';
+                block.style.left = `${e.clientX - offsetX}px`;
+                block.style.top = `${e.clientY - offsetY}px`;
+            };
+
+            const onMouseUp = () => {
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+                document.removeEventListener('touchmove', onMouseMove); // 移除触摸移动事件
+                document.removeEventListener('touchend', onMouseUp); // 移除触摸结束事件
+            };
+
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+            document.addEventListener('touchmove', onMouseMove); // 添加触摸移动事件
+            document.addEventListener('touchend', onMouseUp); // 添加触摸结束事件
+        }
+    </script>
+</body>
+
+</html>

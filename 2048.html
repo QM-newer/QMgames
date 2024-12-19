@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2048 游戏</title>
+    <style>
+        /* 设置页面的基本样式 */
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #faf8ef;
+            font-family: Arial, sans-serif;
+        }
+
+        /* 游戏容器的样式 */
+        #game-container {
+            width: 400px;
+            background-color: #bbada0;
+            border-radius: 5px;
+            padding: 15px;
+        }
+
+        /* 网格的样式 */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-gap: 15px;
+        }
+
+        /* 单元格的样式 */
+        .cell {
+            width: 80px;
+            height: 80px;
+            background-color: #cdc1b4;
+            border-radius: 5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 36px;
+            font-weight: bold;
+            color: #776e65;
+        }
+
+        /* 分数显示的样式 */
+        #score {
+            text-align: center;
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="game-container">
+        <div id="score">分数: 0</div>
+        <div class="grid" id="grid"></div>
+        <div id="footer" style="text-align: center; font-size: 12px; color: #776e65; margin-top: 10px;">
+            2048 游戏 © 孤帆_邱某
+        </div>
+    </div>
+    <script>
+        // 获取 DOM 元素
+        const grid = document.getElementById('grid');
+        const scoreDisplay = document.getElementById('score');
+        let score = 0; // 初始化分数
+        let board = []; // 初始化棋盘
+
+        // 初始化游戏
+        function initGame() {
+            board = Array(16).fill(0); // 创建一个 4x4 的棋盘
+            score = 0; // 重置分数
+            addNewTile(); // 添加两个新方块
+            addNewTile();
+            updateBoard(); // 更新棋盘显示
+        }
+
+        // 添加新方块
+        function addNewTile() {
+            const emptyTiles = board.reduce((acc, val, idx) => {
+                if (val === 0) acc.push(idx); // 找到空方块
+                return acc;
+            }, []);
+            if (emptyTiles.length > 0) {
+                const randomIndex = emptyTiles[Math.floor(Math.random() * emptyTiles.length)];
+                board[randomIndex] = Math.random() < 0.9 ? 2 : 4; // 随机生成 2 或 4
+            }
+        }
+
+        // 更新棋盘显示
+        function updateBoard() {
+            grid.innerHTML = ''; // 清空当前棋盘
+            board.forEach(value => {
+                const cell = document.createElement('div'); // 创建单元格
+                cell.className = 'cell';
+                cell.textContent = value || ''; // 设置单元格内容
+                if (value) {
+                    cell.style.backgroundColor = `hsl(${Math.log2(value) * 20}, 50%, 50%)`; // 设置背景色
+                    cell.style.color = value > 4 ? '#f9f6f2' : '#776e65'; // 设置字体颜色
+                }
+                grid.appendChild(cell); // 将单元格添加到棋盘
+            });
+            scoreDisplay.textContent = `分数: ${score}`; // 更新分数显示
+        }
+
+        // 移动方块
+        function move(direction) {
+            let moved = false; // 标记是否有方块移动
+            const size = 4; // 棋盘大小
+
+            // 操作行或列
+            function operate(row) {
+                let newRow = row.filter(val => val !== 0); // 过滤掉空方块
+                for (let i = 0; i < newRow.length - 1; i++) {
+                    if (newRow[i] === newRow[i + 1]) { // 合并相同的方块
+                        newRow[i] *= 2; // 方块值翻倍
+                        score += newRow[i]; // 更新分数
+                        newRow.splice(i + 1, 1); // 移除合并后的方块
+                        moved = true; // 标记为已移动
+                    }
+                }
+                while (newRow.length < size) {
+                    newRow.push(0); // 填充空方块
+                }
+                return newRow;
+            }
+
+            // 根据方向移动方块
+            if (direction === 'left' || direction === 'right') {
+                for (let i = 0; i < size; i++) {
+                    let row = board.slice(i * size, (i + 1) * size); // 获取当前行
+                    if (direction === 'right') row.reverse(); // 反转行
+                    let newRow = operate(row); // 操作行
+                    if (direction === 'right') newRow.reverse(); // 反转回去
+                    for (let j = 0; j < size; j++) {
+                        if (board[i * size + j] !== newRow[j]) {
+                            moved = true; // 标记为已移动
+                        }
+                        board[i * size + j] = newRow[j]; // 更新棋盘
+                    }
+                }
+            } else {
+                for (let j = 0; j < size; j++) {
+                    let column = [board[j], board[j + size], board[j + size * 2], board[j + size * 3]]; // 获取当前列
+                    if (direction === 'down') column.reverse(); // 反转列
+                    let newColumn = operate(column); // 操作列
+                    if (direction === 'down') newColumn.reverse(); // 反转回去
+                    for (let i = 0; i < size; i++) {
+                        if (board[i * size + j] !== newColumn[i]) {
+                            moved = true; // 标记为已移动
+                        }
+                        board[i * size + j] = newColumn[i]; // 更新棋盘
+                    }
+                }
+            }
+            if (moved) {
+                addNewTile(); // 添加新方块
+                updateBoard(); // 更新棋盘显示
+            }
+        }
+
+        // 监听键盘事件
+        document.addEventListener('keydown', e => {
+            switch (e.key) {
+                case 'w':
+                    move('up'); // 向上移动
+                    break;
+                case 's':
+                    move('down'); // 向下移动
+                    break;
+                case 'a':
+                    move('left'); // 向左移动
+                    break;
+                case 'd':
+                    move('right'); // 向右移动
+                    break;
+            }
+        });
+
+        // 监听触摸事件
+        let startX, startY, endX, endY;
+
+        grid.addEventListener('touchstart', e => {
+            e.preventDefault(); // 阻止默认行为
+            const touch = e.touches[0]; // 获取触摸点
+            startX = touch.clientX; // 记录起始 X 坐标
+            startY = touch.clientY; // 记录起始 Y 坐标
+        });
+
+        grid.addEventListener('touchmove', e => {
+            e.preventDefault(); // 阻止默认行为
+        });
+
+        grid.addEventListener('touchend', e => {
+            const touch = e.changedTouches[0]; // 获取结束触摸点
+            endX = touch.clientX; // 记录结束 X 坐标
+            endY = touch.clientY; // 记录结束 Y 坐标
+
+            const deltaX = endX - startX; // 计算 X 方向的变化
+            const deltaY = endY - startY; // 计算 Y 方向的变化
+
+            if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                // 水平方向移动
+                if (deltaX > 0) {
+                    move('right'); // 向右移动
+                } else {
+                    move('left'); // 向左移动
+                }
+            } else {
+                // 垂直方向移动
+                if (deltaY > 0) {
+                    move('down'); // 向下移动
+                } else {
+                    move('up'); // 向上移动
+                }
+            }
+        });
+
+        initGame(); // 初始化游戏
+    </script>
+</body>
+
+</html>

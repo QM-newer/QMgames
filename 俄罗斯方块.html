@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>俄罗斯方块</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #d3bebe;
+        }
+        canvas {
+            border: 1px solid #fff;
+        }
+        button {
+            margin-bottom: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .button-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        button {
+            margin: 0 10px;
+        }
+    </style>
+</head>
+<body>
+    <button id="startButton">开始游戏</button>
+    <button id="pauseButton">暂停游戏</button>
+    <canvas id="tetris" width="300" height="600"></canvas>
+    <div class="button-container">
+        <button id="leftButton">左</button>
+        <button id="rightButton">右</button>
+        <button id="rotateButton">转</button>
+        <button id="dropButton">加速</button>
+    </div>俄罗斯方块 游戏 © 孤帆_邱某
+    <script>
+        const canvas = document.getElementById('tetris');
+        const context = canvas.getContext('2d');
+        context.scale(30, 30);
+
+        // 俄罗斯方块的形状
+        const tetrominoes = [
+            [[1, 1, 1, 1]], // I
+            [[1, 1], [1, 1]], // O
+            [[0, 1, 0], [1, 1, 1]], // T
+            [[1, 1, 0], [0, 1, 1]], // S
+            [[0, 1, 1], [1, 1, 0]], // Z
+            [[1, 0, 0], [1, 1, 1]], // L
+            [[0, 0, 1], [1, 1, 1]]  // J
+        ];
+
+        const colors = [
+            'cyan', // I
+            'yellow', // O
+            'purple', // T
+            'green', // S
+            'red', // Z
+            'blue', // L
+            'orange' // J
+        ];
+
+        let board;
+        let currentTetromino;
+        let position;
+        let currentColor;
+        let score;
+        let gameLoopInterval;
+        let dropInterval = 800; // 初始下落间隔，减少到800ms
+        let isPaused = false; // 游戏状态，默认为未暂停
+
+        function startGame() {
+            board = Array.from({ length: 20 }, () => Array(10).fill(0)); // 创建10列×20行的棋盘
+            score = 0; // 重置分数
+            position = { x: 4, y: 0 }; // 设置初始位置
+            resetTetromino(); // 重置当前方块
+            if (gameLoopInterval) clearInterval(gameLoopInterval); // 清除之前的定时器
+            gameLoopInterval = setInterval(gameLoop, dropInterval); // 设置游戏循环
+            draw(); // 绘制初始界面
+        }
+
+        function draw() {
+            context.clearRect(0, 0, canvas.width, canvas.height); // 清空画布
+            drawBoard(); // 绘制棋盘
+            drawTetromino(); // 绘制当前方块
+            drawScore(); // 绘制分数
+        }
+
+        function drawBoard() {
+            board.forEach((row, y) => { // 遍历棋盘的每一行
+                row.forEach((value, x) => { // 遍历每一行的每一列
+                    if (value) { // 如果该位置有方块
+                        context.fillStyle = value; // 使用当前颜色
+                        context.fillRect(x, y, 1, 1); // 绘制方块
+                        context.strokeStyle = 'white'; // 设置边框颜色为白色
+                        context.lineWidth = 0.05; // 设置边框宽度
+                        context.strokeRect(x, y, 1, 1); // 绘制方块边框
+                    }
+                });
+            });
+        }
+
+        function drawTetromino() {
+            currentTetromino.forEach((row, y) => { // 遍历当前方块的每一行
+                row.forEach((value, x) => { // 遍历每一行的每一列
+                    if (value) { // 如果该位置有方块
+                        context.fillStyle = currentColor; // 使用当前方块颜色
+                        context.fillRect(position.x + x, position.y + y, 1, 1); // 绘制方块
+                        context.strokeStyle = 'white'; // 设置边框颜色为白色
+                        context.lineWidth = 0.05; // 设置边框宽度
+                        context.strokeRect(position.x + x, position.y + y, 1, 1); // 绘制方块边框
+                    }
+                });
+            });
+        }
+
+        function drawScore() {
+            context.fillStyle = 'white'; // 设置分数文本颜色为白色
+            context.font = '0.5px Arial'; // 设置字体样式
+            context.fillText(`分数: ${score}`, 0, 1); // 绘制分数文本
+        }
+
+        function update() {
+            if (!isPaused) { // 只有在未暂停时更新
+                position.y++; // 向下移动方块
+                if (collision()) { // 检查碰撞
+                    position.y--; // 如果碰撞，恢复位置
+                    merge(); // 合并方块
+                    resetTetromino(); // 重置当前方块
+                }
+                draw(); // 绘制更新后的界面
+
+                // 检查分数并调整下落速度
+                if (score >= 1000) {
+                    dropInterval = Math.max(100, dropInterval - 100); // 每1000分减少下落间隔，最低为100ms
+                    clearInterval(gameLoopInterval); // 清除之前的定时器
+                    gameLoopInterval = setInterval(gameLoop, dropInterval); // 设置新的游戏循环
+                }
+            }
+        }
+
+        function collision() {
+            return currentTetromino.some((row, y) => { // 检查当前方块的每一行
+                return row.some((value, x) => { // 检查每一行的每一列
+                    if (value) { // 如果该位置有方块
+                        const newX = position.x + x; // 计算新X坐标
+                        const newY = position.y + y; // 计算新Y坐标
+                        return newX < 0 || newX >= 10 || newY >= 20 || (board[newY] && board[newY][newX]); // 检查边界和碰撞
+                    }
+                    return false; // 如果没有方块，返回false
+                });
+            });
+        }
+
+        function merge() {
+            currentTetromino.forEach((row, y) => { // 遍历当前方块的每一行
+                row.forEach((value, x) => { // 遍历每一���的每一列
+                    if (value) { // 如果该位置有方块
+                        board[position.y + y][position.x + x] = currentColor; // 将方块合并到棋盘，保留颜色
+                    }
+                });
+            });
+            score += removeFullRows(); // 更新分数
+        }
+
+        function removeFullRows() {
+            let linesCleared = 0; // 清除的行数
+            board = board.reduce((acc, row, rowIndex) => { // 遍历棋盘
+                if (row.every(value => value)) { // 如果该行满了
+                    linesCleared++; // 增加清除行数
+                    acc[rowIndex] = Array(10).fill(0); // 清空该行
+                } else {
+                    acc.push(row); // 保留该行
+                }
+                return acc; // 返回更新后的棋盘
+            }, []);
+            // 下落逻辑
+            for (let y = board.length - 1; y >= 0; y--) {
+                if (board[y].every(value => value === 0)) {
+                    for (let aboveY = y - 1; aboveY >= 0; aboveY--) {
+                        if (board[aboveY].some(value => value !== 0)) {
+                            board[y] = [...board[aboveY]];
+                            board[aboveY] = Array(10).fill(0);
+                            break;
+                        }
+                    }
+                }
+            }
+            return linesCleared === 4 ? 800 : linesCleared * 100; // 返回分数
+        }
+
+        function resetTetromino() {
+            const index = Math.floor(Math.random() * tetrominoes.length); // 随机选择方块
+            currentTetromino = tetrominoes[index]; // 设置当前方块
+            currentColor = colors[index]; // 设置当前方块颜色
+            position = { x: 4, y: 0 }; // 设置初始位置
+            if (collision()) { // 检查碰撞
+                alert('游戏结束'); // 弹出游戏结束提示
+                clearInterval(gameLoopInterval); // 清除定时器
+            }
+        }
+
+        function rotateTetromino() {
+            const rotated = currentTetromino[0].map((_, index) => // 旋转方块
+                currentTetromino.map(row => row[index]).reverse() // 反转行
+            );
+            const originalTetromino = currentTetromino; // 保存原始方块
+            currentTetromino = rotated; // 更新为旋转后的方块
+            if (collision()) { // 检查碰撞
+                currentTetromino = originalTetromino; // 恢复原始方块
+            }
+        }
+
+        document.getElementById('startButton').addEventListener('click', startGame); // 绑定开始游戏按钮事件
+
+        document.getElementById('pauseButton').addEventListener('click', () => { // 绑定暂停游戏按钮事件
+            isPaused = !isPaused; // 切换暂停状态
+            if (isPaused) {
+                clearInterval(gameLoopInterval); // 暂停游戏
+            } else {
+                gameLoopInterval = setInterval(gameLoop, dropInterval); // 恢复游戏
+            }
+        });
+
+        document.addEventListener('keydown', (event) => { // 监听键盘事件
+            if (!isPaused) { // 只有在未暂停时响应键盘事件
+                if (event.key === 'a') { // 向左移动
+                    position.x--;
+                    if (collision()) position.x++; // 检查碰撞
+                } else if (event.key === 'd') { // 向右移动
+                    position.x++;
+                    if (collision()) position.x--; // 检查碰撞
+                } else if (event.key === 's') { // 向下移动
+                    position.y++;
+                    if (collision()) { // 检查碰撞
+                        position.y--; // 恢复位置
+                        merge(); // 合并方块
+                        resetTetromino(); // 重置当前方块
+                    }
+                } else if (event.key === 'w') { // 旋转方块
+                    rotateTetromino();
+                }
+                draw(); // 绘制更新后的界面
+            }
+        });
+
+        document.addEventListener('contextmenu', (event) => { // 监听右键菜单事件
+            event.preventDefault(); // 阻止默认右键菜单
+            rotateTetromino(); // 旋转方块
+            draw(); // 绘制新后的界面
+        });
+
+        function gameLoop() {
+            update(); // 更新游戏状态
+        }
+
+        document.getElementById('leftButton').addEventListener('click', () => { // 向左按钮事件
+            position.x--;
+            if (collision()) position.x++; // 检查碰撞
+            draw(); // 绘制更新后的界面
+        });
+
+        document.getElementById('rightButton').addEventListener('click', () => { // 向右按钮事件
+            position.x++;
+            if (collision()) position.x--; // 检查碰撞
+            draw(); // 绘制更新后的界面
+        });
+
+        document.getElementById('rotateButton').addEventListener('click', () => { // 旋转按钮事件
+            rotateTetromino();
+            draw(); // 绘制更新后的界面
+        });
+
+        document.getElementById('dropButton').addEventListener('click', () => { // 加速下落按钮事件
+            position.y++; // 直接向下移动方块
+            if (collision()) { // 检查碰撞
+                position.y--; // 恢复位置
+                merge(); // 合并方块
+                resetTetromino(); // 重置当前方块
+            }
+            draw(); // 绘制更新后的界面
+        });
+    </script>
+</body>
+</html>
